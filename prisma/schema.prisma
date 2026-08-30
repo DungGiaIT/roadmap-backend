@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User{
+  userID String @id @default(uuid())
+  userName String
+  email String @unique
+  password String
+  createdAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+
+  recipes   Recipes[]
+}
+
+model Recipes{
+  recipeID String @id @default(uuid())
+  recipeName String
+  description String
+  recipeImg String?
+  cookingTime Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userID  String
+  user User   @relation(fields: [userID], references: [userID])
+
+  categoryID   String
+  category     Category @relation(fields: [categoryID], references: [categoryID])
+
+  recipeIngredients RecipeIngredient[]
+}
+
+model Category{
+  categoryID   String    @id @default(uuid())
+  categoryName String    @unique
+
+  recipes   Recipes[]
+}
+
+model Ingredient{
+  ingredientID String @id @default(uuid())
+  IngredientName String
+  recipeIngredients RecipeIngredient[]
+}
+
+model RecipeIngredient{
+  recipeID String
+  ingredientID String
+  quantity Float
+  recipes Recipes @relation(fields: [recipeID], references: [recipeID])
+  ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID])
+
+  @@id([recipeID, ingredientID])
+}
+
+// User --> Recipes --> recipeIngredient <-- ingredients
+//             |
+//           category
+
+// user 1 -- N Recipes
+// recipe N -- N ingredients
+// catagory 1 -- N recipe
