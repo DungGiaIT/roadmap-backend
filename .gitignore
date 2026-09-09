@@ -3,3 +3,4 @@
 .agents
 .vscode
 skills-lock.json
+.env
