@@ -3,6 +3,7 @@ import recipeRouter from "./routes/recipesRoute.js";
 import { connectDB, disconnectDB } from "./config/db.js";
 
 import authRouter from "./routes/auth.js";
+import categoryRouter from "./routes/categoryRoutes.js"
 
 import {config} from "dotenv";
 
@@ -11,12 +12,12 @@ connectDB()
 
 const app = express();
 
-// body parsing
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 app.use("/recipe", recipeRouter);
 app.use("/", authRouter);
+app.use("/", categoryRouter);
 
 app.get("/Home",(req,res) =>{
     res.json({message: "Hello World!"})
