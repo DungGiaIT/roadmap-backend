@@ -8,31 +8,19 @@ import categoryRouter from "./routes/categoryRoutes.js"
 import {config} from "dotenv";
 
 config()
-connectDB()
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
-app.use("/recipe", recipeRouter);
 app.use("/", authRouter);
 app.use("/", categoryRouter);
+app.use("/", recipeRouter);
 
 app.get("/Home",(req,res) =>{
     res.json({message: "Hello World!"})
 });
-
-
-process.on("unhandledRejection", (err) => {
-    console.error("Unhandled Rejection:", err);
-
-    server.close(async () => {
-        await disconnectDB();
-        process.exit(1);
-    });
-});
-    
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
@@ -67,6 +55,12 @@ process.on("SIGTERM", async () => {
 
 const PORT = 3000;
 
-const server = app.listen(PORT, () => {
-    console.log(`Server running on PORT ${PORT}`)
-});
+const startServer = async() =>{
+    await connectDB();
+
+    app.listen(PORT, () => {
+        console.log(`Server running on PORT ${PORT}`)
+    });
+}
+
+startServer();

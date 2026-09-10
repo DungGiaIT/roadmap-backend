@@ -27,7 +27,7 @@ model User{
 
 model Recipes{
   recipeID String @id @default(uuid())
-  recipeName String
+  recipeName String @unique
   description String
   recipeImg String?
   cookingTime Int

@@ -26,7 +26,7 @@ const createCategory = async (req, res) => {
     
     return res.status(201).json({
         message:  "Category created successfully",
-        category: newCategory,
+        newCategory,
     });
 }
 
@@ -76,7 +76,7 @@ const updateCategory = async (req, res)=>{
     return res.status(200).json({
         status: "success",
         message: "Category updated successfully",
-        category: updateCategory
+        updateCategory
     });
 }
 

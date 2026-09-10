@@ -1,21 +1,16 @@
 import express from "express";
+import { getRecipes, createRecipe, getRecipeByName, updateRecipe, deleteRecipe} from "../controller/recipeController.js";
 
 const router =  express.Router();
 
-router.get("/",(req,res)=>{
-    res.json({httpMethod: "get"});
-});
+router.post("/recipe", createRecipe);
 
-router.post("/", (req, res) =>{
-    res.json({httpMethod:"post"})
-});
+router.get("/recipe", getRecipes);
+ 
+router.get("/recipe/:recipeName", getRecipeByName);
 
-router.put("/", (req, res) =>{
-    res.json({httpMethod:"put"})
-});
+router.put("/recipe/:id", updateRecipe);
 
-router.delete("/", (req, res) =>{
-    res.json({httpMethod:"delete"})
-});
+router.delete("/recipe/:id", deleteRecipe);
 
 export default router
