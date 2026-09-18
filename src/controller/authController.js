@@ -1,17 +1,10 @@
 import {prisma} from "../config/db.js"
 import bcrypt from "bcryptjs";
-import { generateToken } from "../untils/generateToken.js";
+import jwt from "jsonwebtoken";
 
 const register = async (req, res) => {
-    console.log("AUTH CONTROLLER LOADED");
     const {name, email, password} = req.body;
 
-    const userExist = await prisma.user.findUnique({
-        where: {email: email},
-    });
-    if (userExist) {
-        return res.status(400).json({status: "error", message: "User already exists with email"});
-    }
     const salt = await bcrypt.genSalt(10)
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -23,7 +16,7 @@ const register = async (req, res) => {
         }
     });
 
-    res.status(201).json({
+    return res.status(201).json({
         status: "success",
         data: {
             user: {
@@ -50,9 +43,20 @@ const login = async (req, res) =>{
         return res.status(401).json({ status: "error", message: "Invalid password" }); 
     }
 
-    generateToken(userExist.userID,res);
+    const token = jwt.sign(
+        { id: userExist.userID },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+    );
+
+    res.cookie("jwt", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 1000 * 60 * 60 * 24 * 3,
+    });
     
-    res.status(200).json({
+    return res.status(200).json({
         status: "success",
         data: {
             user: {
@@ -70,10 +74,23 @@ const logout = async (req, res) =>{
         httpOnly:true,
         expires: new Date(0),
     });
-    res.status(200).json({
+    return res.status(200).json({
         status: "success",
         message: "Logged out successfully",
     });
-}
+};
 
-export{register, login, logout};
+const getCurrentUser = async (req, res) => {
+    return res.status(200).json({
+        status: "success",
+        data: {
+            user: {
+                id: req.user.userID,
+                name: req.user.userName,
+                email: req.user.email,
+            },
+        },
+    });
+};
+
+export { register, login, logout, getCurrentUser };

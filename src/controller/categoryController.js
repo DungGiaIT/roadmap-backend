@@ -10,14 +10,6 @@ const createCategory = async (req, res) => {
         })
     }
 
-    const categoryExist = await prisma.category.findUnique({
-        where: {categoryName: categoryName},
-    })
-
-    if (categoryExist){
-        return res.status(400).json("Category already")
-    }
-    
     const newCategory = await prisma.category.create({
         data: {
             categoryName: categoryName,
@@ -25,8 +17,8 @@ const createCategory = async (req, res) => {
     })
     
     return res.status(201).json({
-        message:  "Category created successfully",
-        newCategory,
+        status: "success",
+        data: { category: newCategory },
     });
 }
 
@@ -35,7 +27,7 @@ const getCategories = async(req,res) =>{
     
     return res.status(200).json({
         status: "success",
-        categories
+        data: { categories },
     })
 }
 
@@ -56,7 +48,7 @@ const getCategoryById = async (req, res) =>{
 
     return res.status(200).json({
         status: "success",
-        category
+        data: { category },
     });
 }
 
@@ -64,7 +56,7 @@ const updateCategory = async (req, res)=>{
     const {id} = req.params;
     const {categoryName} = req.body;
 
-    const updateCategory = await prisma.category.update({
+    const updatedCategory = await prisma.category.update({
         where: {
             categoryID: id
         },
@@ -75,27 +67,13 @@ const updateCategory = async (req, res)=>{
 
     return res.status(200).json({
         status: "success",
-        message: "Category updated successfully",
-        updateCategory
+        data: { category: updatedCategory },
     });
 }
 
 const deleteCategory = async (req, res)=>{
     const {id} = req.params;
     
-    const categoryExist = await prisma.category.findUnique({
-        where: {
-            categoryID:id
-        }
-    })
-
-    if (!categoryExist) {
-        return res.status(404).json({
-            status: "error",
-            message: "Category not found"
-        });
-    }
-
     await prisma.category.delete({
         where: {
             categoryID: id
@@ -104,7 +82,7 @@ const deleteCategory = async (req, res)=>{
 
     return res.status(200).json({
         status: "success",
-        message: "Category deleted successfully"
+        data: { message: "Category deleted successfully" }
     });
 }
 

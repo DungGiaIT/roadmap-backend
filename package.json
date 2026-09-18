@@ -4,9 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/server.js",
-    "postinstall": "prisma skills sync || exit 0"
+    "test": "node --input-type=module -e \"await import('./src/app.js'); console.log('app import ok')\"",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +24,6 @@
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
     "prisma": "^6.19.3"
   }
 }

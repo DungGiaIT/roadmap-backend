@@ -23,6 +23,7 @@ model User{
   updateAt DateTime @updatedAt
 
   recipes   Recipes[]
+  watchlists Watchlist[]
 }
 
 model Recipes{
@@ -41,6 +42,7 @@ model Recipes{
   category     Category @relation(fields: [categoryID], references: [categoryID])
 
   recipeIngredients RecipeIngredient[]
+  watchlists Watchlist[]
 }
 
 model Category{
@@ -64,6 +66,20 @@ model RecipeIngredient{
   ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID])
 
   @@id([recipeID, ingredientID])
+}
+
+model Watchlist {
+  watchlistID String   @id @default(uuid())
+  userID      String
+  recipeID    String
+  createdAt   DateTime @default(now())
+
+  user   User    @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  recipe Recipes @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+
+  @@unique([userID, recipeID])
+  @@index([userID])
+  @@index([recipeID])
 }
 
 // User --> Recipes --> recipeIngredient <-- ingredients
