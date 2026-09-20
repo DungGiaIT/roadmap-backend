@@ -22,6 +22,13 @@ export const errorHandler = (error, _req, res, _next) => {
         });
     }
 
+    if (error.code === "P2003") {
+        return res.status(404).json({
+            status: "error",
+            message: "A related record was not found",
+        });
+    }
+
     const statusCode = error.statusCode || 500;
     return res.status(statusCode).json({
         status: "error",

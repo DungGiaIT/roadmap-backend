@@ -54,7 +54,6 @@ export const protect = async (req, res, next) => {
                 message: "User associated with token no longer exists",
             });
         }
-
         req.user = user;
         next();
     } catch (_error) {
@@ -63,11 +62,11 @@ export const protect = async (req, res, next) => {
 };
 
 export const authorizeRecipeOwner = async (req, res, next) => {
+    const recipeID = req.params.id || req.params.recipeID;
     const recipe = await prisma.recipes.findUnique({
-        where: { recipeID: req.params.id },
+        where: { recipeID },
         select: { userID: true },
     });
-
     if (!recipe) {
         return res.status(404).json({ status: "error", message: "Recipe not found" });
     }

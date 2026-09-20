@@ -14,56 +14,56 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User{
-  userID String @id @default(uuid())
-  userName String
-  email String @unique
-  password String
+model User {
+  userID    String   @id @default(uuid())
+  userName  String
+  email     String   @unique
+  password  String
   createdAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  updateAt  DateTime @updatedAt
 
-  recipes   Recipes[]
+  recipes    Recipes[]
   watchlists Watchlist[]
 }
 
-model Recipes{
-  recipeID String @id @default(uuid())
-  recipeName String @unique
+model Recipes {
+  recipeID    String   @id @default(uuid())
+  recipeName  String   @unique
   description String
-  recipeImg String?
+  recipeImg   String?
   cookingTime Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  userID  String
-  user User   @relation(fields: [userID], references: [userID])
+  userID String
+  user   User   @relation(fields: [userID], references: [userID])
 
-  categoryID   String
-  category     Category @relation(fields: [categoryID], references: [categoryID])
+  categoryID String
+  category   Category @relation(fields: [categoryID], references: [categoryID])
 
   recipeIngredients RecipeIngredient[]
-  watchlists Watchlist[]
+  watchlists        Watchlist[]
 }
 
-model Category{
-  categoryID   String    @id @default(uuid())
-  categoryName String    @unique
+model Category {
+  categoryID   String @id @default(uuid())
+  categoryName String @unique
 
-  recipes   Recipes[]
+  recipes Recipes[]
 }
 
-model Ingredient{
-  ingredientID String @id @default(uuid())
-  IngredientName String
+model Ingredient {
+  ingredientID      String             @id @default(uuid())
+  IngredientName    String             @unique
   recipeIngredients RecipeIngredient[]
 }
 
-model RecipeIngredient{
-  recipeID String
+model RecipeIngredient {
+  recipeID     String
   ingredientID String
-  quantity Float
-  recipes Recipes @relation(fields: [recipeID], references: [recipeID])
-  ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID])
+  quantity     Float
+  recipes      Recipes    @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientID], references: [ingredientID], onDelete: Cascade)
 
   @@id([recipeID, ingredientID])
 }
