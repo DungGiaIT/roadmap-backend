@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,78 +8,387 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  userID    String   @id @default(uuid())
-  userName  String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updateAt  DateTime @updatedAt
-
-  recipes    Recipes[]
-  watchlists Watchlist[]
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
 }
 
-model Recipes {
-  recipeID    String   @id @default(uuid())
-  recipeName  String   @unique
-  description String
-  recipeImg   String?
-  cookingTime Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum Role {
+  USER
+  EDITOR
+  ADMIN
+}
 
-  userID String
-  user   User   @relation(fields: [userID], references: [userID])
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
 
-  categoryID String
-  category   Category @relation(fields: [categoryID], references: [categoryID])
+enum RecipeStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
 
-  recipeIngredients RecipeIngredient[]
-  watchlists        Watchlist[]
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum IngredientRole {
+  MAIN
+  SECONDARY
+  SEASONING
+}
+
+enum IngredientKind {
+  MAIN
+  SECONDARY
+  SEASONING
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum ModerationAction {
+  SUBMIT
+  APPROVE
+  REJECT
+  ARCHIVE
+}
+
+model User {
+  id            String            @id @default(uuid()) @map("userID")
+  displayName   String            @map("userName")
+  email         String            @unique
+  passwordHash  String            @map("password")
+  status        UserStatus        @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt @map("updateAt")
+
+  roles            UserRole[]
+  refreshTokens    RefreshToken[]
+  preferences      UserPreference?
+  recipes          Recipe[]
+  favorites        Favorite[]
+  ratings          Rating[]
+  comments         Comment[]
+  collections      Collection[]
+  mealPlans        MealPlan[]
+  cookingLogs      CookingLog[]
+  moderationEvents ModerationEvent[] @relation("ModerationReviewer")
+  auditLogs        AuditLog[]
+
+  @@map("User")
+}
+
+model UserRole {
+  userId String @map("userID")
+  role   Role
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("UserRole")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("userID")
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("RefreshToken")
+}
+
+model UserPreference {
+  userId            String   @id @map("userID")
+  theme             Theme    @default(SYSTEM)
+  locale            String   @default("vi")
+  dietTags          String[] @default([])
+  preferredTimeMax  Int?
+  difficulty        String[] @default([])
+  mainIngredientIds String[] @default([])
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("UserPreference")
+}
+
+model Recipe {
+  id              String         @id @default(uuid()) @map("recipeID")
+  title           String         @unique @map("recipeName")
+  slug            String         @unique
+  description     String         @default("")
+  imageUrl        String?        @map("recipeImg")
+  prepMinutes     Int            @default(0)
+  cookMinutes     Int            @map("cookingTime")
+  servings        Int            @default(1)
+  difficulty      Difficulty     @default(EASY)
+  status          RecipeStatus   @default(DRAFT)
+  rejectionReason String?
+  publishedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  author            User                @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  authorId          String              @map("userID")
+  category          Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  categoryId        String              @map("categoryID")
+  ingredients       RecipeIngredient[]
+  steps             RecipeStep[]
+  tags              RecipeTag[]
+  favorites         Favorite[]
+  ratings           Rating[]
+  comments          Comment[]
+  collectionRecipes CollectionRecipe[]
+  mealPlanItems     MealPlanItem[]
+  cookingLogs       CookingLog[]
+  moderationEvents  ModerationEvent[]
+
+  @@index([status, publishedAt])
+  @@index([authorId, status])
+  @@map("Recipes")
 }
 
 model Category {
-  categoryID   String @id @default(uuid())
-  categoryName String @unique
+  id      String   @id @default(uuid()) @map("categoryID")
+  name    String   @unique @map("categoryName")
+  recipes Recipe[]
 
-  recipes Recipes[]
+  @@map("Category")
 }
 
 model Ingredient {
-  ingredientID      String             @id @default(uuid())
-  IngredientName    String             @unique
+  id                String             @id @default(uuid()) @map("ingredientID")
+  nameVi            String             @unique @map("IngredientName")
+  nameEn            String?
+  slug              String             @unique
+  kind              IngredientKind     @default(MAIN)
   recipeIngredients RecipeIngredient[]
+
+  @@map("Ingredient")
 }
 
 model RecipeIngredient {
-  recipeID     String
-  ingredientID String
+  recipeId     String         @map("recipeID")
+  ingredientId String         @map("ingredientID")
   quantity     Float
-  recipes      Recipes    @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
-  ingredient   Ingredient @relation(fields: [ingredientID], references: [ingredientID], onDelete: Cascade)
+  unit         String?
+  note         String?
+  role         IngredientRole @default(SECONDARY)
+  sortOrder    Int            @default(0)
+  recipe       Recipe         @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient     @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
-  @@id([recipeID, ingredientID])
+  @@id([recipeId, ingredientId])
+  @@index([ingredientId, role, recipeId])
+  @@map("RecipeIngredient")
 }
 
-model Watchlist {
-  watchlistID String   @id @default(uuid())
-  userID      String
-  recipeID    String
-  createdAt   DateTime @default(now())
+model RecipeStep {
+  id           String   @id @default(uuid())
+  recipeId     String
+  stepNumber   Int
+  instruction  String
+  imageUrl     String?
+  timerSeconds Int?
+  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
-  user   User    @relation(fields: [userID], references: [userID], onDelete: Cascade)
-  recipe Recipes @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
-
-  @@unique([userID, recipeID])
-  @@index([userID])
-  @@index([recipeID])
+  @@unique([recipeId, stepNumber])
+  @@map("RecipeStep")
 }
 
-// User --> Recipes --> recipeIngredient <-- ingredients
-//             |
-//           category
+model Tag {
+  id      String     @id @default(uuid())
+  slug    String     @unique
+  nameVi  String
+  nameEn  String?
+  recipes RecipeTag[]
 
-// user 1 -- N Recipes
-// recipe N -- N ingredients
-// catagory 1 -- N recipe
+  @@map("Tag")
+}
+
+model RecipeTag {
+  recipeId String
+  tagId    String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, tagId])
+  @@map("RecipeTag")
+}
+
+model Favorite {
+  id        String   @id @default(uuid()) @map("watchlistID")
+  userId    String   @map("userID")
+  recipeId  String   @map("recipeID")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+  @@map("Watchlist")
+}
+
+model Collection {
+  id          String             @id @default(uuid())
+  userId      String             @map("userID")
+  name        String
+  description String?
+  isDefault   Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipes     CollectionRecipe[]
+
+  @@unique([userId, name])
+  @@map("Collection")
+}
+
+model CollectionRecipe {
+  collectionId String     @map("collectionID")
+  recipeId     String     @map("recipeID")
+  sortOrder    Int        @default(0)
+  note         String?
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  recipe       Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, recipeId])
+  @@map("CollectionRecipe")
+}
+
+model MealPlan {
+  id        String         @id @default(uuid())
+  userId    String         @map("userID")
+  weekStart DateTime       @db.Date
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     MealPlanItem[]
+
+  @@unique([userId, weekStart])
+  @@map("MealPlan")
+}
+
+model MealPlanItem {
+  id         String   @id @default(uuid())
+  mealPlanId String   @map("mealPlanID")
+  recipeId   String   @map("recipeID")
+  date       DateTime @db.Date
+  mealType   MealType
+  note       String?
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([mealPlanId, date])
+  @@map("MealPlanItem")
+}
+
+model CookingLog {
+  id             String          @id @default(uuid())
+  userId         String          @map("userID")
+  recipeId       String          @map("recipeID")
+  startedAt      DateTime?
+  completedAt    DateTime        @default(now())
+  servingsUsed   Int?
+  note           String?
+  personalRating Int?
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe         Recipe          @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  photos         CookingPhoto[]
+
+  @@index([userId, completedAt])
+  @@map("CookingLog")
+}
+
+model CookingPhoto {
+  id           String     @id @default(uuid())
+  cookingLogId String     @map("cookingLogID")
+  storagePath  String
+  publicUrl    String?
+  createdAt    DateTime   @default(now())
+  cookingLog   CookingLog @relation(fields: [cookingLogId], references: [id], onDelete: Cascade)
+
+  @@map("CookingPhoto")
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  userId    String   @map("userID")
+  recipeId  String   @map("recipeID")
+  score     Int
+  review    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@map("Rating")
+}
+
+model Comment {
+  id        String        @id @default(uuid())
+  userId    String        @map("userID")
+  recipeId  String        @map("recipeID")
+  body      String
+  status    CommentStatus @default(VISIBLE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId, status, createdAt])
+  @@map("Comment")
+}
+
+model ModerationEvent {
+  id         String           @id @default(uuid())
+  recipeId   String           @map("recipeID")
+  reviewerId String?          @map("reviewerID")
+  action     ModerationAction
+  reason     String?
+  createdAt  DateTime         @default(now())
+  recipe     Recipe           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  reviewer   User?            @relation("ModerationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId, createdAt])
+  @@map("ModerationEvent")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actorID")
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  requestId  String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("AuditLog")
+}

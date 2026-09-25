@@ -1,82 +1,71 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../config/db.js";
+import { forbidden, notFound, unauthorized } from "../common/errors.js";
 
-const getToken = (req) => {
-    if (req.cookies?.jwt) return req.cookies.jwt;
-
-    const authorization = req.headers.authorization;
-    if (authorization?.startsWith("Bearer ")) return authorization.slice(7);
-
-    return null;
-};
+const accessSecret = () => process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "dev-access-secret";
 
 export const parseCookies = (req, _res, next) => {
     req.cookies = {};
-    const cookieHeader = req.headers.cookie;
+    const header = req.headers.cookie;
+    if (!header) return next();
 
-    if (cookieHeader) {
-        for (const part of cookieHeader.split(";")) {
-            const separatorIndex = part.indexOf("=");
-            if (separatorIndex === -1) continue;
-
-            const key = part.slice(0, separatorIndex).trim();
-            const value = part.slice(separatorIndex + 1).trim();
-            req.cookies[key] = decodeURIComponent(value);
-        }
+    for (const part of header.split(";")) {
+        const separator = part.indexOf("=");
+        if (separator === -1) continue;
+        const key = part.slice(0, separator).trim();
+        const value = part.slice(separator + 1).trim();
+        req.cookies[key] = decodeURIComponent(value);
     }
 
     next();
 };
 
-export const protect = async (req, res, next) => {
-    const token = getToken(req);
+const accessTokenFromRequest = (req) => {
+    const header = req.headers.authorization;
+    if (header?.startsWith("Bearer ")) return header.slice(7);
+    return req.cookies.accessToken || null;
+};
 
-    if (!token) {
-        return res.status(401).json({ status: "error", message: "Authentication required" });
-    }
+export const protect = async (req, _res, next) => {
+    const token = accessTokenFromRequest(req);
+    if (!token) return next(unauthorized());
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const payload = jwt.verify(token, accessSecret());
         const user = await prisma.user.findUnique({
-            where: { userID: decoded.id },
-            select: {
-                userID: true,
-                userName: true,
-                email: true,
-                createdAt: true,
-                updateAt: true,
-            },
+            where: { id: payload.sub },
+            include: { roles: true, preferences: true },
         });
 
-        if (!user) {
-            return res.status(401).json({
-                status: "error",
-                message: "User associated with token no longer exists",
-            });
-        }
-        req.user = user;
-        next();
-    } catch (_error) {
-        return res.status(401).json({ status: "error", message: "Invalid or expired token" });
+        if (!user || user.status !== "ACTIVE") return next(unauthorized("User is not active"));
+
+        req.user = {
+            id: user.id,
+            email: user.email,
+            displayName: user.displayName,
+            roles: user.roles.map(({ role }) => role),
+            preferences: user.preferences,
+        };
+        return next();
+    } catch {
+        return next(unauthorized("Invalid or expired access token"));
     }
 };
 
-export const authorizeRecipeOwner = async (req, res, next) => {
-    const recipeID = req.params.id || req.params.recipeID;
-    const recipe = await prisma.recipes.findUnique({
-        where: { recipeID },
-        select: { userID: true },
-    });
-    if (!recipe) {
-        return res.status(404).json({ status: "error", message: "Recipe not found" });
+export const authorizeRoles = (...allowedRoles) => (req, _res, next) => {
+    const hasRole = req.user?.roles?.some((role) => allowedRoles.includes(role));
+    return hasRole ? next() : next(forbidden());
+};
+
+export const authorizeRecipeOwner = async (req, _res, next) => {
+    const recipeId = req.params.id || req.params.recipeId || req.params.recipeID;
+    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { authorId: true } });
+
+    if (!recipe) return next(notFound("Recipe not found"));
+    if (recipe.authorId !== req.user.id && !req.user.roles.some((role) => ["EDITOR", "ADMIN"].includes(role))) {
+        return next(forbidden("You do not have permission to modify this recipe"));
     }
 
-    if (recipe.userID !== req.user.userID) {
-        return res.status(403).json({
-            status: "error",
-            message: "You do not have permission to modify this recipe",
-        });
-    }
-
-    next();
+    req.recipeOwnerCheck = recipe;
+    return next();
 };
