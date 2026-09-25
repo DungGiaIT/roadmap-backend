@@ -1,0 +1,21 @@
+:root {
+    color-scheme: light;
+    --color-page: #f7f5ef;
+    --color-surface: #fffdf8;
+    --color-text: #263128;
+    --color-muted: #6f786f;
+    --color-line: #e5e4dc;
+    --color-brand: #497453;
+    --color-accent: #e98352;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-page: #17201b;
+    --color-surface: #202c24;
+    --color-text: #edf2eb;
+    --color-muted: #aab9ad;
+    --color-line: #3b4a3f;
+    --color-brand: #8fbd96;
+    --color-accent: #f0a078;
+}
