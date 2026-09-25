@@ -171,7 +171,12 @@ export const listRecipes = async (req) => {
 export const getRecipeBySlug = async (slug) => {
     const recipe = await prisma.recipe.findFirst({ where: { slug, status: "PUBLISHED" }, include: recipeInclude });
     if (!recipe) throw notFound("Recipe not found");
-    return serializeRecipe(recipe);
+    const rating = await prisma.rating.aggregate({
+        where: { recipeId: recipe.id },
+        _avg: { score: true },
+        _count: { _all: true },
+    });
+    return { ...serializeRecipe(recipe), rating: { average: rating._avg.score || 0, count: rating._count._all } };
 };
 
 export const createRecipe = async (userId, input) => {
@@ -289,4 +294,3 @@ export const moderateRecipe = async (id, reviewerId, action, reason, requestId) 
         return updated;
     });
 };
-
